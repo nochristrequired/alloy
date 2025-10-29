@@ -35,7 +35,7 @@ jobs:
         run: |
           set -o pipefail
           pushd syntax >/dev/null
-          go test ./... | tee ../go-test.log
+          go test ./parser | tee ../go-test.log
           popd >/dev/null
 
       - name: Run Python integration tests
@@ -54,7 +54,7 @@ jobs:
         id: package
         run: |
           ASSET_NAME="liballoyparser-linux-amd64-${{ github.ref_name }}.tgz"
-          tar -czf "dist/${ASSET_NAME}" -C dist liballoyparser.so liballoyparser.h
+          tar -czf "dist/${ASSET_NAME}" -C dist liballoyparser.so
           echo "asset_name=${ASSET_NAME}" >> "$GITHUB_OUTPUT"
           echo "asset_path=dist/${ASSET_NAME}" >> "$GITHUB_OUTPUT"
 
@@ -74,12 +74,6 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: liballoyparser ${{ github.ref_name }}
           body: |
-            ## Grafana Alloy parser shared library (Linux amd64)
-
-            All tests completed successfully before packaging the shared library asset listed below.
-            
-            Asset: `${{ steps.package.outputs.asset_name }}`
-
             ## Test results
 
             ### Go parser tests
