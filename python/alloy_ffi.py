@@ -77,13 +77,14 @@ class AlloyParserBridge:
 
     def _prepare_buffer(
         self, payload: bytes
-    ) -> tuple[ctypes.c_void_p, int, Optional[ctypes.Array[ctypes.c_char]]]:
+    ) -> tuple[ctypes.c_void_p, ctypes.c_size_t, Optional[ctypes.Array[ctypes.c_char]]]:
         if not payload:
-            return ctypes.c_void_p(), 0, None
+            return ctypes.c_void_p(), ctypes.c_size_t(0), None
 
         buffer = (ctypes.c_char * len(payload)).from_buffer_copy(payload)
         pointer = ctypes.cast(buffer, ctypes.c_void_p)
-        return pointer, len(payload), buffer
+        length = ctypes.c_size_t(len(payload))
+        return pointer, length, buffer
 
     def _consume_result(
         self,
