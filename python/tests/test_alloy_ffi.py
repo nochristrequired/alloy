@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ctypes
 import json
 import subprocess
 from pathlib import Path
@@ -13,6 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from python import alloy_ffi as alloy_ffi_module
 from python.alloy_ffi import AlloyParserBridge, ParseStatus
 
 
@@ -128,3 +130,40 @@ def test_results_are_valid_json(bridge: AlloyParserBridge) -> None:
     raw_payload = json.dumps(result.payload)
     decoded = json.loads(raw_payload)
     assert decoded["file"]["body"][0]["attribute"]["value"]["literal"]["value"] == "1"
+
+
+def test_parse_expression_large_length(
+    monkeypatch: pytest.MonkeyPatch, bridge: AlloyParserBridge
+) -> None:
+    """Guard against 32-bit truncation of large configurations."""
+
+    large_length = 2**31 + 1
+    sentinel_pointer = ctypes.c_void_p(0xDEADBEEF)
+
+    def fake_prepare_buffer(_: bytes) -> tuple[ctypes.c_void_p, ctypes.c_size_t, None]:
+        return sentinel_pointer, ctypes.c_size_t(large_length), None
+
+    call_count = 0
+
+    def fake_parse_expression(
+        data_ptr: ctypes.c_void_p, length: ctypes.c_size_t
+    ) -> alloy_ffi_module._AlloyJSONResult:
+        nonlocal call_count
+        call_count += 1
+        assert isinstance(length, ctypes.c_size_t)
+        assert length.value == large_length
+        assert data_ptr.value == sentinel_pointer.value
+        return alloy_ffi_module._AlloyJSONResult(
+            data=None,
+            length=0,
+            status=ParseStatus.OK.value,
+        )
+
+    monkeypatch.setattr(bridge, "_prepare_buffer", fake_prepare_buffer)
+    monkeypatch.setattr(bridge._lib, "AlloyParseExpressionJSON", fake_parse_expression)
+
+    result = bridge.parse_expression(b"not actually parsed")
+
+    assert result.status == ParseStatus.OK
+    assert result.payload == {}
+    assert call_count == 1
