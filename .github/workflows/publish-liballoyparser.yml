@@ -87,7 +87,6 @@ jobs:
         id: package
         run: |
           ASSET_NAME="liballoyparser-linux-amd64-v${VERSION}.tgz"
-          ASSET_NAME="liballoyparser-linux-amd64-${TAG_NAME}.tgz"
           tar -czf "dist/${ASSET_NAME}" -C dist liballoyparser.so
           echo "asset_name=${ASSET_NAME}" >> "$GITHUB_OUTPUT"
           echo "asset_path=dist/${ASSET_NAME}" >> "$GITHUB_OUTPUT"
@@ -107,7 +106,6 @@ jobs:
         with:
           tag_name: ${{ env.TAG_NAME }}
           name: liballoyparser v${{ env.VERSION }}
-          name: liballoyparser ${{ env.TAG_NAME }}
           body: |
             ## Test results
 
