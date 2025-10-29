@@ -44,9 +44,10 @@ jobs:
         run: go test ./parser
 
       - name: Run Go FFI tests
+        working-directory: syntax
         env:
           CGO_ENABLED: 1
-        run: go test ./syntax/ffi
+        run: go test ./ffi
 
       - name: Run Python integration tests
         run: pytest python/tests
