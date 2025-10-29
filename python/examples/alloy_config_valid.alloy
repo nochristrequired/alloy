@@ -1,0 +1,78 @@
+logging {
+  level = "warn"
+}
+
+livedebugging {
+  enabled = true
+}
+
+// PROCESSES
+prometheus.exporter.self "run_alloy_exporter" {
+}
+
+prometheus.exporter.unix "run_node_exporter" {
+  include_exporter_metrics = true
+  enable_collectors = ["logind", "drm", "infiniband", "ethtool"]
+  disable_collectors       = ["mdadm"]
+}
+
+
+// INPUT
+prometheus.scrape "scrape_alloy_exporter" {
+  scrape_interval = "15s"
+
+  targets =  prometheus.exporter.self.run_alloy_exporter.targets
+
+  forward_to = [
+    prometheus.remote_write.mimir.receiver,
+  ]
+}
+
+
+prometheus.scrape "scrape_node_exporter" {
+  scrape_interval = "15s"
+
+  targets = prometheus.exporter.unix.run_node_exporter.targets
+
+  forward_to = [
+    prometheus.remote_write.mimir.receiver,
+  ]
+}
+
+prometheus.scrape "scrape_amd_device_metrics_exporter" {
+  scrape_interval = "15s"
+  job_name        = "amd_device_metrics"
+  targets = [
+    { "__address__" = "127.0.0.1:5000" },
+  ]
+
+  forward_to = [
+    prometheus.relabel.transform_amd_device_metrics_exporter.receiver,
+  ]
+}
+
+// TRANSFORMS
+prometheus.relabel "transform_amd_device_metrics_exporter" {
+  rule {
+    action        = "replace"
+    source_labels = ["__name__"]
+    regex         = "(.*)"
+    target_label  = "__name__"
+    replacement   = "amd_${1}"
+  }
+
+  forward_to = [
+    prometheus.remote_write.mimir.receiver,
+  ]
+}
+
+// OUTPUTS
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://mimir-dev.local:9009/api/v1/push"
+
+    headers = {
+      "X-Scope-OrgID" = "demo",
+    }
+  }
+}
