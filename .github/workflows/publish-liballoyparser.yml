@@ -5,6 +5,8 @@ on:
     inputs:
       version:
         description: Version number to publish (for example, 0.1.0)
+      tag:
+        description: Tag name to publish (for example, liballoyparser-v1.0.0)
         required: true
 
 permissions:
@@ -14,6 +16,8 @@ jobs:
   build-and-release:
     name: Build and publish liballoyparser
     runs-on: ubuntu-24.04
+    env:
+      TAG_NAME: ${{ github.event.inputs.tag }}
 
     steps:
       - name: Checkout code
@@ -65,6 +69,13 @@ jobs:
           set -o pipefail
           pytest python/tests | tee python-test.log
 
+      - name: Validate tag input
+        run: |
+          if [ "${TAG_NAME#liballoyparser-v}" = "${TAG_NAME}" ]; then
+            echo "tag must start with liballoyparser-v" >&2
+            exit 1
+          fi
+
       - name: Build shared library
         env:
           GOOS: linux
@@ -76,6 +87,7 @@ jobs:
         id: package
         run: |
           ASSET_NAME="liballoyparser-linux-amd64-v${VERSION}.tgz"
+          ASSET_NAME="liballoyparser-linux-amd64-${TAG_NAME}.tgz"
           tar -czf "dist/${ASSET_NAME}" -C dist liballoyparser.so
           echo "asset_name=${ASSET_NAME}" >> "$GITHUB_OUTPUT"
           echo "asset_path=dist/${ASSET_NAME}" >> "$GITHUB_OUTPUT"
@@ -95,6 +107,7 @@ jobs:
         with:
           tag_name: ${{ env.TAG_NAME }}
           name: liballoyparser v${{ env.VERSION }}
+          name: liballoyparser ${{ env.TAG_NAME }}
           body: |
             ## Test results
 
