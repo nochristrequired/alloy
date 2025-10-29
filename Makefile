@@ -39,6 +39,10 @@
 ##   dist-alloy-packages  Produce release-ready DEB and RPM packages.
 ##   dist-alloy-installer Produce a Windows installer for Alloy.
 ##
+## Targets for foreign-function interfaces:
+##
+##   liballoyparser  Build the shared parser library for Python bindings.
+##
 ## Targets for generating assets:
 ##
 ##   generate                  Generate everything.
@@ -88,6 +92,17 @@ GOARM                ?= $(shell go env GOARM)
 CGO_ENABLED          ?= 1
 RELEASE_BUILD        ?= 0
 GOEXPERIMENT         ?= $(shell go env GOEXPERIMENT)
+ifeq ($(GOOS),windows)
+SHARED_LIB_EXT := dll
+else
+ifeq ($(GOOS),darwin)
+SHARED_LIB_EXT := dylib
+else
+SHARED_LIB_EXT := so
+endif
+endif
+ALLOY_FFI_LIBRARY ?= dist/liballoyparser.$(SHARED_LIB_EXT)
+ALLOY_FFI_HEADER  := $(basename $(ALLOY_FFI_LIBRARY)).h
 
 # Determine the golangci-lint binary path using Make functions where possible.
 # Priority: GOBIN, GOPATH/bin, PATH (via shell), Fallback Name.
@@ -113,7 +128,9 @@ PROPAGATE_VARS := \
 # Constants for targets
 #
 
-GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED)
+GO_ENV_COMMON := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM)
+GO_ENV        := $(GO_ENV_COMMON) CGO_ENABLED=$(CGO_ENABLED)
+GO_ENV_CGO    := $(GO_ENV_COMMON) CGO_ENABLED=1
 
 VERSION      ?= $(shell bash ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
@@ -206,6 +223,15 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	cd ./internal/cmd/alloylint && $(GO_ENV) go build $(GO_FLAGS) -o ../../../$(ALLOYLINT_BINARY) .
+endif
+
+.PHONY: liballoyparser
+liballoyparser:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	mkdir -p $(dir $(ALLOY_FFI_LIBRARY))
+	cd syntax && $(GO_ENV_CGO) go build $(GO_FLAGS) -buildmode=c-shared -o ../$(ALLOY_FFI_LIBRARY) ./ffi
 endif
 
 #
@@ -307,6 +333,7 @@ endif
 .PHONY: clean
 clean: clean-dist clean-build-container-cache
 	rm -rf ./build/*
+	rm -f $(ALLOY_FFI_LIBRARY) $(ALLOY_FFI_HEADER)
 
 .PHONY: info
 info:
