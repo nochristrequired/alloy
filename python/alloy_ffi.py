@@ -47,13 +47,13 @@ class AlloyParserBridge:
         self._lib.AlloyParseFileJSON.argtypes = [
             ctypes.c_char_p,
             ctypes.c_void_p,
-            ctypes.c_int,
+            ctypes.c_size_t,
         ]
         self._lib.AlloyParseFileJSON.restype = _AlloyJSONResult
 
         self._lib.AlloyParseExpressionJSON.argtypes = [
             ctypes.c_void_p,
-            ctypes.c_int,
+            ctypes.c_size_t,
         ]
         self._lib.AlloyParseExpressionJSON.restype = _AlloyJSONResult
 
