@@ -34,6 +34,30 @@ The script locates the shared library under `dist/` by default. Pass a different
 
 Provide additional configuration files after the optional library argument to validate more Alloy configurations in one run.
 
+## Run inside Docker
+
+Use the Docker helpers if you prefer to run the validation workflow without installing Go or Python locally.
+
+1. Build the container image (optionally pass a custom tag as the first argument):
+
+   ```sh
+   ./python/examples/docker_build_image.sh
+   ```
+
+2. Execute the build-and-validate sequence inside the container. The script accepts an optional image tag followed by the same arguments that `run_validation_example.sh` supports:
+
+   ```sh
+   ./python/examples/docker_run_example.sh
+   ```
+
+   For example, to validate an additional configuration file:
+
+   ```sh
+   ./python/examples/docker_run_example.sh alloy-parser-example:latest python/examples/alloy_config_valid.alloy
+   ```
+
+Both scripts mount the repository into the container so that `docker_run_in_container.sh` can reuse the existing build and validation helpers.
+
 ## Next steps
 
 - Review the [`run_validation.py`](./run_validation.py) helper for more invocation options.
